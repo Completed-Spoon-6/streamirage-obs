@@ -4,6 +4,15 @@
 StreamirageClient::StreamirageClient() {}
 StreamirageClient::~StreamirageClient() {}
 
+const char* S_DIRECTORY = "directory"; 
+const char* T_DIRECTORY = "Directory";
+const char* S_SESSIONS_ID = "session_id";
+const char* T_SESSIONS_ID = "SessionID";
+const char* S_DEVICE_NAME = "device_name";
+const char* T_DEVICE_NAME = "DeviceName";
+const char* S_CONNECT = "connect";
+const char* T_CONNECT = "Connect";
+
 void StreamirageClient::RegisterSource()
 {
 	source_info.id = "streamirage";
@@ -68,13 +77,36 @@ void StreamirageClient::DestroySource(void *data)
 void StreamirageClient::UpdateSource(void *data, obs_data_t *settings)
 {
 	// obs_log(LOG_INFO, "Updating Source!");
-	struct filter_data *filterData = (struct filter_data *)data;
-	long long blurTypeIndex = obs_data_get_int(settings, SETTING_BLUR_TYPE);
-	if (filterData && (filterData->selectedFilterIndex != blurTypeIndex)) {
-		filterData->selectedFilterIndex = blurTypeIndex;
-	}
+    struct filter_data *filterData = (struct filter_data *)data;
+    if (!filterData) return;
+
+    const char* sessionId = obs_data_get_string(settings, S_SESSIONS_ID);
+    const char* deviceName = obs_data_get_string(settings, S_DEVICE_NAME);
+	const char* directory = obs_data_get_string(settings, S_DIRECTORY);
+
+	obs_log(LOG_INFO, "SessionID: %s", sessionId);
+	obs_log(LOG_INFO, "Device Name: %s", deviceName);
+	obs_log(LOG_INFO, "Directory: %s", directory);
 }
 
+bool StreamirageClient::ButtonClicked(obs_properties_t* /*props*/, obs_property_t* /*property*/, void* data) {
+    struct filter_data *filterData = static_cast<struct filter_data*>(data);
+    if (!filterData) {
+        obs_log(LOG_ERROR, "Filter data is null");
+        return false;
+    }
+
+    obs_source_t *source = filterData->context;
+    obs_data_t *settings = obs_source_get_settings(source);
+    
+    const char *sessionID = obs_data_get_string(settings, S_SESSIONS_ID);
+    const char *deviceName = obs_data_get_string(settings, S_DEVICE_NAME);
+
+    obs_log(LOG_INFO, "Button Pressed! Session ID: %s, Device Name: %s", sessionID, deviceName);
+
+    obs_data_release(settings);
+    return true;
+}
 
 
 obs_properties_t *StreamirageClient::GetProperties(void *data)
@@ -83,17 +115,16 @@ obs_properties_t *StreamirageClient::GetProperties(void *data)
 
 	if (filterData) {
 		filterData->mainProperties = obs_properties_create();
-		obs_properties_add_text(filterData->mainProperties, "session_id", "SessionID", OBS_TEXT_DEFAULT);
-		obs_properties_add_text(filterData->mainProperties, "device_name", "DeviceName", OBS_TEXT_DEFAULT);
+		obs_properties_add_text(filterData->mainProperties, S_SESSIONS_ID, T_SESSIONS_ID, OBS_TEXT_DEFAULT);
+		obs_properties_add_text(filterData->mainProperties, S_DEVICE_NAME, T_DEVICE_NAME, OBS_TEXT_DEFAULT);
 
 		auto* s = static_cast<dir_watch_media_source*>(data);
-		const char* S_DIRECTORY = "directory"; // Define the missing identifier
-		const char* T_DIRECTORY = "Directory"; // Define the missing identifier
+
 
 		obs_properties_add_path(filterData->mainProperties, S_DIRECTORY, T_DIRECTORY,
 								OBS_PATH_DIRECTORY, nullptr, s->directory);
 
-
+		obs_properties_add_button(filterData->mainProperties, S_CONNECT, T_CONNECT, ButtonClicked);
 
 		return filterData->mainProperties;
 	}

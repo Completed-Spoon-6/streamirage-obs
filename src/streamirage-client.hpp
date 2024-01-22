@@ -37,6 +37,8 @@ public:
 	StreamirageClient();
 	~StreamirageClient();
 	void RegisterSource();
+	static bool ButtonClicked(obs_properties_t *props, obs_property_t *property, void *data);
+
 };
 
 #endif // StreamirageClient_H
