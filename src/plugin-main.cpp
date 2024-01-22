@@ -1,6 +1,6 @@
 /*
-Blur filter plugin
-Copyright (C) 2023 Ashmanix email@ashmanix.com
+Streamirage Client plugin
+Copyright (C) 2023 Moosebeezy armorgeddon@outlook.com
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License along
 with this program. If not, see <https://www.gnu.org/licenses/>
 */
 
-#include "blur-filter-source.hpp"
+#include "streamirage-client.hpp"
 
 #include <obs-module.h>
 #include <plugin-support.h>
@@ -26,8 +26,8 @@ OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 
 bool obs_module_load(void)
 {
-	auto blurFilterSource = new BlurFilterSource();
-	blurFilterSource->RegisterSource();
+	auto streamirageClient = new StreamirageClient();
+	streamirageClient->RegisterSource();
 	obs_log(LOG_INFO, "plugin loaded successfully (version %s)",
 		PLUGIN_VERSION);
 	return true;

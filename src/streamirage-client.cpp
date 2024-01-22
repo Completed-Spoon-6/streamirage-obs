@@ -1,10 +1,10 @@
-#include "blur-filter-source.hpp"
+#include "streamirage-client.hpp"
 #include <obs-module.h>
 
-BlurFilterSource::BlurFilterSource() {}
-BlurFilterSource::~BlurFilterSource() {}
+StreamirageClient::StreamirageClient() {}
+StreamirageClient::~StreamirageClient() {}
 
-void BlurFilterSource::RegisterSource()
+void StreamirageClient::RegisterSource()
 {
 	source_info.id = "streamirage";
 	source_info.type = OBS_SOURCE_TYPE_FILTER;
@@ -33,38 +33,28 @@ struct dir_watch_media_source {
 };
 
 
-const char *BlurFilterSource::GetName(void *unused)
+const char *StreamirageClient::GetName(void *unused)
 {
 	UNUSED_PARAMETER(unused);
 	return obs_module_text("Streamirage");
 }
 
 
-void *BlurFilterSource::CreateSource(obs_data_t *settings, obs_source_t *source)
+void *StreamirageClient::CreateSource(obs_data_t *settings, obs_source_t *source)
 {
 	struct filter_data *filterData =
 		(struct filter_data *)bzalloc(sizeof(struct filter_data));
 
-	filterData->filterArray.push_back(
-		std::unique_ptr<BaseFilter>(new SimpleGaussianFilter()));
-	filterData->filterArray.push_back(
-		std::unique_ptr<BaseFilter>(new BoxBlurFilter()));
-	filterData->filterArray.push_back(
-		std::unique_ptr<BaseFilter>(new FastGaussianFilter()));
-
 	filterData->context = source;
 	filterData->selectedFilterIndex = 0;
 
-	filterData->filterArray[filterData->selectedFilterIndex]->UpdateFilter(
-		settings);
-	SetDefaultProperties(filterData, settings);
 
 	obs_source_update(source, settings);
 
 	return filterData;
 }
 
-void BlurFilterSource::DestroySource(void *data)
+void StreamirageClient::DestroySource(void *data)
 {
 	struct filter_data *filterData = (struct filter_data *)data;
 	if (filterData->effect) {
@@ -75,7 +65,7 @@ void BlurFilterSource::DestroySource(void *data)
 	bfree(data);
 }
 
-void BlurFilterSource::UpdateSource(void *data, obs_data_t *settings)
+void StreamirageClient::UpdateSource(void *data, obs_data_t *settings)
 {
 	// obs_log(LOG_INFO, "Updating Source!");
 	struct filter_data *filterData = (struct filter_data *)data;
@@ -83,12 +73,11 @@ void BlurFilterSource::UpdateSource(void *data, obs_data_t *settings)
 	if (filterData && (filterData->selectedFilterIndex != blurTypeIndex)) {
 		filterData->selectedFilterIndex = blurTypeIndex;
 	}
-	filterData->filterArray[blurTypeIndex]->UpdateFilter(settings);
 }
 
 
 
-obs_properties_t *BlurFilterSource::GetProperties(void *data)
+obs_properties_t *StreamirageClient::GetProperties(void *data)
 {
 	struct filter_data *filterData = (struct filter_data *)data;
 
@@ -112,25 +101,15 @@ obs_properties_t *BlurFilterSource::GetProperties(void *data)
 	return nullptr;
 }
 
-void BlurFilterSource::SetDefaultProperties(filter_data *filterData,
-					    obs_data_t *settings)
-{
-	for (size_t i = 0; i < filterData->filterArray.size(); i++) {
-		filterData->filterArray[i]->SetPropertyDefaults(settings);
-	}
-}
 
-void BlurFilterSource::RenderSource(void *data, gs_effect_t *effect)
+void StreamirageClient::RenderSource(void *data, gs_effect_t *effect)
 {
 	struct filter_data *filterData = (struct filter_data *)data;
-	long long filterIndex = filterData->selectedFilterIndex;
-	obs_source_t *context = filterData->context;
 
 	if (!obs_source_process_filter_begin(filterData->context, GS_RGBA,
 					     OBS_ALLOW_DIRECT_RENDERING))
 		return;
 
-	filterData->filterArray[filterIndex]->Render(context);
 
 	if (!filterData->effect) {
 		obs_source_process_filter_end(filterData->context, effect, 0,

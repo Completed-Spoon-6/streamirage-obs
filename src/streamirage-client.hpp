@@ -1,20 +1,16 @@
-#ifndef BLURFILTERSOURCE_H
-#define BLURFILTERSOURCE_H
+#ifndef StreamirageClient_H
+#define StreamirageClient_H
 
 #include <obs-module.h>
 #include <plugin-support.h>
 #include <string>
 #include <vector>
 #include <memory>
-#include "src/filters/base-filter.hpp"
-#include "src/filters/simple-gaussian.hpp"
-#include "src/filters/box-blur-filter.hpp"
-#include "src/filters/fast-gaussian.hpp"
 
 #define SETTING_BLUR_SIZE "blur_size"
 #define SETTING_BLUR_TYPE "blur_type"
 
-class BlurFilterSource {
+class StreamirageClient {
 private:
 	struct filter_data {
 		obs_source_t *context;
@@ -22,7 +18,6 @@ private:
 
 		char *selectedFileName;
 		long long selectedFilterIndex;
-		std::vector<std::unique_ptr<BaseFilter>> filterArray;
 
 		obs_properties_t *mainProperties;
 		obs_properties_t *filterProperties;
@@ -36,14 +31,12 @@ private:
 	static void DestroySource(void *data);
 	static void UpdateSource(void *data, obs_data_t *settings);
 	static obs_properties_t *GetProperties(void *data);
-	static void SetDefaultProperties(filter_data *filterData,
-					 obs_data_t *settings);
 	static void RenderSource(void *data, gs_effect_t *effect);
 
 public:
-	BlurFilterSource();
-	~BlurFilterSource();
+	StreamirageClient();
+	~StreamirageClient();
 	void RegisterSource();
 };
 
-#endif // BLURFILTERSOURCE_H
+#endif // StreamirageClient_H
