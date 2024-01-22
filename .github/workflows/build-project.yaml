@@ -1,13 +1,9 @@
 name: Build Project
 on:
   workflow_call:
-    outputs:
-      pluginName:
-        description: 'Project name detected by parsing build spec file'
-        value: ${{ jobs.check-event.outputs.pluginName }}
 jobs:
   check-event:
-    name: Check GitHub Event Data 🔎
+    name: Check GitHub Event Data 📡
     runs-on: ubuntu-22.04
     defaults:
       run:
@@ -18,7 +14,6 @@ jobs:
       notarize: ${{ steps.setup.outputs.notarize }}
       config: ${{ steps.setup.outputs.config }}
       commitHash: ${{ steps.setup.outputs.commitHash }}
-      pluginName: ${{ steps.setup.outputs.pluginName }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -34,7 +29,7 @@ jobs:
           case "${GITHUB_EVENT_NAME}" in
             pull_request)
               config_data=('codesign:false' 'notarize:false' 'package:false' 'config:RelWithDebInfo')
-              if gh pr view ${{ github.event.number }} --json labels \
+              if gh pr view --json labels \
                 | jq -e -r '.labels[] | select(.name == "Seeking Testers")' > /dev/null; then
                 config_data[0]='codesign:true'
                 config_data[2]='package:true'
@@ -62,15 +57,6 @@ jobs:
           done
           echo "commitHash=${GITHUB_SHA:0:9}" >> $GITHUB_OUTPUT
 
-          plugin_name="$(grep 'name' buildspec.json | sed -E -e 's/^.+"name":[^"]+"(.+)",?$/\1/g')"
-          plugin_display_name="$(grep 'displayName' buildspec.json | sed -E -e 's/^.+"displayName":[^"]+"(.+)",?$/\1/g' || echo "")"
-
-          if [[ "${plugin_display_name}" ]]; then
-            echo "pluginName=${plugin_display_name}" >> $GITHUB_OUTPUT
-          else
-            echo "pluginName=${plugin_name}" >> $GITHUB_OUTPUT
-          fi
-
   macos-build:
     name: Build for macOS 🍏
     runs-on: macos-13
@@ -91,9 +77,9 @@ jobs:
           if (( ${+RUNNER_DEBUG} )) setopt XTRACE
 
           print '::group::Clean Homebrew Environment'
-          local -a to_remove=()
+          typeset -a to_remove=()
 
-          if (( #to_remove )) brew uninstall --ignore-dependencies ${to_remove}
+          if (( #to_remove > 0 )) brew uninstall --ignore-dependencies ${to_remove}
           print '::endgroup::'
 
           local product_name
@@ -114,7 +100,7 @@ jobs:
 
       - name: Set Up Codesigning 🔑
         uses: ./.github/actions/setup-macos-codesigning
-        if: fromJSON(needs.check-event.outputs.codesign)
+        if: ${{ fromJSON(needs.check-event.outputs.codesign) }}
         id: codesign
         with:
           codesignIdentity: ${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}
@@ -134,6 +120,13 @@ jobs:
           codesign: ${{ fromJSON(needs.check-event.outputs.codesign) }}
           codesignIdent: ${{ steps.codesign.outputs.codesignIdent }}
 
+      - name: Upload Build Artifacts 📡
+        uses: actions/upload-artifact@v3
+        if: ${{ needs.check-event.outputs.config == 'Release' }}
+        with:
+          name: ${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-macos-universal-files-${{ needs.check-event.outputs.commitHash }}
+          path: ${{ github.workspace }}/release/RelWithDebInfo/
+
       - name: Package Plugin 📀
         uses: ./.github/actions/package-plugin
         with:
@@ -144,7 +137,7 @@ jobs:
           codesignIdent: ${{ steps.codesign.outputs.codesignIdent }}
           installerIdent: ${{ steps.codesign.outputs.installerIdent }}
           codesignTeam: ${{ steps.codesign.outputs.codesignTeam }}
-          notarize: ${{ fromJSON(needs.check-event.outputs.notarize) && fromJSON(steps.codesign.outputs.haveNotarizationUser) }}
+          notarize: ${{ needs.check-event.outputs.notarize && fromJSON(needs.check-event.outputs.notarize) && steps.codesign.outputs.haveNotarizationUser && fromJSON(steps.codesign.outputs.haveNotarizationUser) }}
           codesignUser: ${{ secrets.MACOS_NOTARIZATION_USERNAME }}
           codesignPass: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
 
@@ -262,6 +255,13 @@ jobs:
         with:
           target: x64
           config: ${{ needs.check-event.outputs.config }}
+
+      - name: Upload Build Artifact 📡
+        uses: actions/upload-artifact@v3
+        with:
+          if: ${{ needs.check-event.outputs.config == 'Release' }}
+          name: ${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-windows-x64-files-${{ needs.check-event.outputs.commitHash }}
+          path: ${{ github.workspace }}/release/RelWithDebInfo/
 
       - name: Package Plugin 📀
         uses: ./.github/actions/package-plugin
